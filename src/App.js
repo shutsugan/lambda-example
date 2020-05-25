@@ -1,48 +1,51 @@
-import React, { Component } from "react"
+import React, { Component } from "react";
+import { ApolloClient } from 'apollo-client';
+import { InMemoryCache } from 'apollo-cache-inmemory';
+import { HttpLink } from 'apollo-link-http';
+import { ApolloProvider, useQuery } from '@apollo/react-hooks';
+import gql from 'graphql-tag';
+
 import logo from "./logo.svg"
 import "./App.css"
 
-class LambdaDemo extends Component {
-  constructor(props) {
-    super(props)
-    this.state = { loading: false, msg: null }
-  }
+const cache = new InMemoryCache();
+const link = new HttpLink({
+    uri: '/.netlify/functions/graphql'
+});
 
-  handleClick = api => e => {
-    e.preventDefault()
+const client = new ApolloClient({
+    cache,
+    link
+});
 
-    this.setState({ loading: true })
-    fetch("/.netlify/functions/" + api)
-      .then(response => response.json())
-      .then(json => this.setState({ loading: false, msg: json.msg }))
-  }
+const HELLO = gql`
+  query Hello { hello }
+`;
 
-  render() {
-    const { loading, msg } = this.state
+const LambdaDemo = () => {
+  const { data, loading, error } = useQuery(HELLO);
 
-    return (
-      <p>
-        <button onClick={this.handleClick("hello")}>{loading ? "Loading..." : "Call Lambda"}</button>
-        <button onClick={this.handleClick("async-dadjoke")}>{loading ? "Loading..." : "Call Async Lambda"}</button>
-        <br />
-        <span>{msg}</span>
-      </p>
-    )
-  }
-}
+  if (loading) return <div>Loading...</div>
+  if (error) return <div>Error {error}</div>
+  if (data === 'undefined') return <div>no data found</div>
+
+  return (<div>{data.hello}</div>);
+};
 
 class App extends Component {
   render() {
     return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            Edit <code>src/App.js</code> and save to reload.
-          </p>
-          <LambdaDemo />
-        </header>
-      </div>
+      <ApolloProvider client={client}>
+        <div className="App">
+          <header className="App-header">
+            <img src={logo} className="App-logo" alt="logo" />
+            <p>
+              Edit <code>src/App.js</code> and save to reload.
+            </p>
+            <LambdaDemo />
+          </header>
+        </div>
+      </ApolloProvider>
     )
   }
 }
